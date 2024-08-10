@@ -1,0 +1,180 @@
+1. Create the vector database 
+
+Dataset--Pubmed largest collection of medical articles
+
+csv----title , summary,date of publishing , authors , type of disease,...., link to the pdf or the actual journal
+
+1000 titles ----> embedding technique / Bio-Bert model output the embedding( the size of the embedding for a title 
+will typically look like (5,768))
+
+1000,10,768 ----> clustering using k-means  euclidean/cosine/manhattan -----> cluster size can be determined by the elbow plot
+
+5,10,768--->df.iloc[4,:]['journal']---Context
+
+2. Bio-Bert base model training
+
+
+from csv file take the journals/articles and create a corpus.
+
+all the dataframes and extracting the articles and combining them into one single huge large corpus of only text
+corpus = c 
+
+Bio-Bert post trained under 2 techniques
+
+a. ) MLM-masked language modelling
+
+ajai is a great guitarist from bangalore--------------------------------------------[cls][768][768][768][768][768][768][768](7,768)
+
+ajai is a # guitarist # #  ------predict the mask ----probability distribution over the vocabulary( 2 million ---multi class distribution)
+
+import MLM auto trained model for bert from hugging face 
+200 odd layers in the BERT , we unfreeze the weights of around 70-80 layers 
+c is known ---> pass c through the auto train MLM ----> fix the epoch and other hyperparameters and train the model and save
+
+
+b.) NSP - Next sentence prediction
+import MLM trained earlier and import NSP auto train
+The abdominal pain was high and excruciating pain in the lower region. Hence, it was diagnozed as gas attack.
+c is known----->chunking and take pairs 1st and 2nd ground truth----> fix the epoch and other hyperparameters and train and save the model
+
+COVID-BERT
+
+3. Question answering 
+
+from BERT import question answering head (start and end vector)
+
+Base BERT model(COVID-BERT) ----> add a question answering head to this model as import from above
+model QNA 
+
+Dataset ---Context , Question , Answer 
+
+ajai is a good boy . he lives in bangalore . he has 2 kids .context
+question : how many kids does ajai have 
+answer 2 kids ......answer start 12 and answer end 14
+
+Dataset SQUAD- Stanford Question and Answerting in context
+
+
+We will train the QNA model on this question answering dataset called quac
+SQUAD - Inherent Flaw , context question 
+context, question-----------> model----> answer
+context, question2----------> model-----> answer
+QUAC - Question answering in context
+context and multiple questions
+COQA ---Its a multi turn question answering dataset
+we will train the QNA on the COQA dataset ---learn the way to answer multiople questions on the same context or article
+
+c1, q ,a
+c2,q,a  
+
+c1,q1,a
+ c1  ,q2,a
+  c1 ,q3,a
+
+covbert_squad_quac_coqa-Final Model
+
+
+4. Inference modelling 
+
+context, question----Qamodel---answer
+
+question  :how will the above model know which context to take 
+question ----Embedding using Bio-Bert model
+
+
+
+question: what are the side effects of taking paracetamol
+article : "Paracetamol : Effects and uses among children and adults"
+article : "Spinal injury: diagnosis and effective contraption techniques of slip disc"
+
+cluster 1              cluster 2           cluster 3 
+paracetamol             spinal injury        heart
+vrocin                                       sleep 
+fever and disprin
+
+
+Question Embedding----> KNN algorithm apply on the vector database to find the appropriate cluster of importance(cosine/euclidean)
+
+Inside each cluster there may be millions of article titles
+
+Inside the cluster we will run the cosine similarity to check which article title is the closest
+
+from the article title we will retieve the actual article which  will be our context
+
+
+question, context ------->covbert_squad_quac_coqa-------> answer 
+
+
+
+Multi Turn 
+
+Technique 1 
+Context, multiple linked questions on the context 
+
+
+
+context1: ajai is a good boy . he lives in bangalore . he has 2 kids. His friend Ankit  lives in new delhi
+question 1 : how many kids does ajai have 
+answer 2 kids
+
+
+
+
+context1 , question
+question 2: where does he live?
+answer :Bangalore 
+
+
+context1: ajai is a good boy . he lives in bangalore . he has 2 kids. His friend Ankit  lives in new delhi
+question 1 : how many kids does ajai have 
+answer 2 kids
+
+question: where does he live?
+
+
+context1 + question1 + answer 
+ajai is a good boy . he lives in bangalore , he graduated in 2011 in mtech PES. he has 2 kids. His friend Ankit  lives in new delhi, he graduated in 2000 from JNU. How many kids does ajai have . 2 kids
+cotext_new 
+
+context_new , question2 
+where does he live 
+answer bangalore 
+
+Technique 2
+
+Follow up questions 
+
+question : hw many kids does ajai have 
+question : where does he live
+question : does ankit live in new delhi
+question : where did ajai do is mtech
+question:did he graduate from PES?
+
+
+De contextualization----un couple the actual context
+
+how many kids does ajai have
+where does he live 
+
+Re fromulate second question and put it to the model as "where does ajai live?"
+
+CQR- Context Query Resolution
+
+DATASET available 
+
+context, query and a reformulated query 
+
+Technique 3 
+
+context , question/prompt , answer 
+LLM technique (MISTRAL)
+
+second question 
+
+Context, prompt ( is this a follow up question)
+"......", prompt("where does he live? is this a follow up question ")
+LLM answers yes----> question formulation changing rewrite " where does ajai live'
+
+LLM answer NO it is not a follow up
+context, question ---answer 
+
